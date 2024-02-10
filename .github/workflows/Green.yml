@@ -1,0 +1,117 @@
+name: Green-AutoBuild
+on:
+#   push:
+#     branches:
+#       - main
+  workflow_dispatch:
+    inputs:
+      ssh:
+        description: 'SSH connection to Actions'
+        required: false
+        default: 'false'
+  schedule:
+    - cron: '0 0 * * 6'
+  watch:
+    types: [started]
+
+env:
+  RUN_VALIDATION: true
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    if: github.event.repository.owner.id == github.event.sender.id
+    
+    name: Build Green
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+            
+    - name: Initialization environment
+      run: |
+        #sudo echo "nameserver 1.1.1.1" >> /etc/hosts
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo -E apt-get -qq update
+        sudo -E apt-get -qq autoremove --purge
+        sudo -E apt-get -qq clean
+        sudo timedatectl set-timezone "Asia/Shanghai"
+        sudo rm -rf "/usr/local/share/boost"
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        sudo rm -rf /usr/share/
+
+    - name: Clone source code  
+      run: |
+        df -hT $PWD
+        #dpkg-query -W --showformat='${Installed-Size} ${Package} ${Status}\n'|grep -v deinstall|sort -n|awk '{print $1" "$2}'
+        git clone https://github.com/home-assistant/operating-system.git -b main HassOS
+        #git clone -b main https://github.com/5high/operating-system.git -b dev HassOS
+ 
+    - name: Change Settings.
+      run: |
+        cp -r rootfs-overlay HassOS/buildroot-external
+        cd HassOS
+        git submodule update --init
+    
+    - name: SSH connection to Actions
+      uses: P3TERX/ssh2actions@v1.0.0
+      if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh  != 'false') || contains(github.event.action, 'ssh')
+      env:
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+
+    - name: Build
+      shell: 'script -q -e -c "bash {0}"'
+      id: build
+      run: |
+        sleep $((RANDOM % 60))    
+        cd HassOS
+        ./scripts/enter.sh make -j$(($(nproc) + 1)) ${{matrix.target}}
+        #sudo ./scripts/entry.sh make ${{matrix.target}}
+        
+    - name: Get current date
+      id: current_date
+      run: |
+        current_date=$(date +'%Y-%m-%d')
+        echo "CURRENT_DATE=${current_date}" >> $GITHUB_ENV
+    
+    - name: Use current date
+      run: echo "Current date is $CURRENT_DATE"
+
+    - name: Upload images to release
+      id: upload-release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: HassOS/output/images/haos_*
+        asset_name: ${{ matrix.asset_name }}
+        tag: HassOS-${{ env.HASSOS_VERSION }}-大陆地区优化版本-${{ env.CURRENT_DATE }}编译
+        overwrite: true
+        file_glob: true
+        body: "针对大陆地区网络专门优化的Home Assistant Green版本   欢迎关注Youtube频道https://youtube.com/@itcommander   博客地址https://sumju.net   官方硬件优惠卷领取https://sumju.net/?p=7943"
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Delete workflow runs
+      uses: 5high/delete-workflow-runs@main
+      with:
+        retain_days: 1
+        keep_minimum_runs: 1
+
+    - name: Remove old Releases
+      uses: dev-drprasad/delete-older-releases@v0.3.2
+      with:
+        keep_latest: 8
+        delete_tags: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+#    - name: Notify on Telegram
+#      uses: appleboy/telegram-action@master
+#      with:
+#        to: ${{ secrets.TELEGRAM_CHAT_ID }}
+#        token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+#       message: "New release! Download it [here](${{ steps.upload-release.outputs.browser_download_url }})."
