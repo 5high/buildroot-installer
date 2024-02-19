@@ -52,6 +52,7 @@ jobs:
         sleep $((RANDOM % 60))    
         cd HassOS
         cp configs/green_installer_defconfig .config
+        ls -a
         make
 
     - name: Upload images to release
