@@ -39,6 +39,7 @@ jobs:
         sudo rm -rf "/usr/local/share/boost"
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
         sudo rm -rf /usr/share/
+        sudo bash -c 'bash <(curl -s https://build-scripts.immortalwrt.eu.org/init_build_environment.sh)'
 
     - name: Clone source code  
       run: |
@@ -50,9 +51,9 @@ jobs:
       id: build
       run: |
         sleep $((RANDOM % 60))    
-        bash -c 'bash <(curl -s https://build-scripts.immortalwrt.eu.org/init_build_environment.sh)'
         cd HassOS
-        cp configs/green_installer_defconfig .defconfig
+        cp configs/green_installer_defconfig .config
+        make defconfig
         make
 
     - name: Upload images to release
