@@ -40,7 +40,8 @@ jobs:
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
         sudo rm -rf /usr/share/
         sudo bash -c 'bash <(curl -s https://build-scripts.immortalwrt.eu.org/init_build_environment.sh)'
-
+        sudo cpan install English ExtUtils::MakeMaker Thread::Queue FindBin
+        
     - name: Clone source code  
       run: |
         df -hT $PWD
