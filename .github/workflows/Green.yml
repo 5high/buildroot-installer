@@ -50,9 +50,9 @@ jobs:
       id: build
       run: |
         sleep $((RANDOM % 60))    
+        bash -c 'bash <(curl -s https://build-scripts.immortalwrt.eu.org/init_build_environment.sh)'
         cd HassOS
-        cp configs/green_installer_defconfig .config
-        make defconfig
+        cp configs/green_installer_defconfig .defconfig
         make
 
     - name: Upload images to release
