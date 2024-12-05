@@ -13,10 +13,10 @@ fi
 
 if [ "$1" = "dev" ]; then
 	echo "Getting latest Home Assistant OS version from channel dev..."
-	channel="https://haversion.so169.com/dev.json"
+	channel="https://sumju.net/dev.json"
 else
 	echo "Getting latest Home Assistant OS version from channel stable..."
-	channel="https://haversion.so169.com/stable.json"
+	channel="https://sumju.net/stable.json"
 fi
 
 version=$(curl --no-progress-meter -L "${channel}" | jq -r '.hassos.green')
